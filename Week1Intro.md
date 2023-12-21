@@ -58,7 +58,7 @@ cd ..
 
 until you reach the root. Here's what that might look like
 
-![Move to root directory](cd_toroot.png)
+![Move to root directory](/images/cd_toroot.png)
 
 Notice how I started in my home directory, and moved up all the way until the root. If I try to move up any further, notice how it will still keep me in the root directory.
 From here, we can 'ls' to see the contents of the entire server. We won't need to be familiar with all of these directories, but some of them can be worth getting familiar with
