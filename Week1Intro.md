@@ -119,7 +119,7 @@ Here's what that should look like
 So the program has been written, but how do we run it? Since C is a compiled language, rather than an interpreted language like Python, all we have to do is compile the
 hello world program and run the executable file it generates. The default C compiler on eecslab can be used like so
 
-![Hello world compile](/images/helloWord_compile.png)
+![Hello world compile](/images/helloWorld_compile.png)
 
 Notice the extra file 'a.out' that is created after compiling. This is an executable file that contains only machine code (binary) for the processor to execute. SO, in
 order to run our program, just type the command below and check that the program correctly outputs 'Hello World'
