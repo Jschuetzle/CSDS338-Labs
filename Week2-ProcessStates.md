@@ -3,7 +3,7 @@
 + [Observing Processes](#top)
 + [Process States](#process-states)
 + [Background vs. Foreground](#bgfg)
-+ [User Space vs Kernel Space](#spaces)
++ [Useful Options and Commands](#options)
 
 ## Processes <a name = "process"></a>
 Loui has probably mentioned what processes are in lecture. If you didn't pick up on it, processes are basically just programs that are running on the CPU. Remember, the CPU (and GPU) are really the only place on 
@@ -112,4 +112,22 @@ An alternative is to press `Ctrl+z` in order to pause the execution of the proce
 There will be moments this semester where the homework will ask you to run multiple instances of a program, or to investigate `top` while a program is running, so I think it's REALLY important to know how to 
 send a program to the background.
 
-## User Space vs Kernel Space <a name = "spaces"></a>
+## Useful Options and Commands <a name = "options"></a>
+So far, every time we open `top`, it may seem daunting since there are so many processes on the screeen--many of which seem randoma and belong to *root* 
+(kernel space). These processes aren't super important to us...yes, they are probably important to the system, but they are not important when all I'm trying
+to do is find my a.out process. I want to go over some useful options that you can use to make looking at `top` output a lot easier. 
+
+An **option** is just added command that you type in that follows the normal command you were intending to run. For example, if I wanted some more descriptive
+information of the files in the current directory, instead of typing just `ls`, I could type
+
+```
+ls -l
+```
+or
+```
+ls -a
+```
+
+The "-(insert char)" is the option. They act as parameters that you could pass to a command/program, kind of like how you can pass parameters to functions in
+any programming language. This implies that each command we run has some default execution version, and that version contains no options. If you aren't very
+familiar with a command, and want to see 
