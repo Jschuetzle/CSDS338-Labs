@@ -24,9 +24,7 @@ exist on the system currently. Here's what that looks like on my chromebook whic
 
 By default, the table updates every 3 seconds and you're able to scroll up and down to see all the processes if there are many. I think the columns that you should be able to understand at this point/after this lab 
 are PID, USER, S, and COMMAND. There are a lot more columns that are available to display...you can change that by pressing 'f' and using your common sense/problem solving abilities from there. IMPORTANT:
-in order to exit the top output, press `q` or `Ctrl+C'. We'll see in a second why `Ctrl+C` is important.
-
-ADD A LITTLE EXPLANATION OF OPTIONS HERE IF YOU THINK THERE'S TIME TO DO SO.
+in order to exit the top output, press `q` or `Ctrl+C`. We'll see in a second why `Ctrl+C` is important.
 
 ## Process States <a name = "process-states"></a>
 The columns I really want to go over today are the S and USER columns. To start off, we'll talk about S, which refers to the **current state** of the process. Just because all of these process are listed on the
@@ -130,4 +128,44 @@ ls -a
 
 The "-(insert char)" is the option. They act as parameters that you could pass to a command/program, kind of like how you can pass parameters to functions in
 any programming language. This implies that each command we run has some default execution version, and that version contains no options. If you aren't very
-familiar with a command, and want to see 
+familiar with a command and want to see some of the options it has available, you can type `man <cmd-name>` and the manual will output to the screen. Usually, this output is quite long, so I'd recommend you pipe the output to `less`, and then scroll down until you find the information you're looking for.
+
+```
+man top | less
+```
+
+One quick note, you can also stack options onto each other, e.g. `ls -alt`. This works as long as the options you stack don't require values to precede the options, e.g. I wouldn't be able to group together the following options
+
+```
+top -d 4 -u jss270
+```
+
+#### Changing Delay
+The default time delay for `top` is 3 seconds...meaning every 3 seconds the output will update. Usually, the homeworks will ask you to take a screengrab
+of top during your program's execution, and trying to take a screenshot with something like Snipping Tool can be a pain. So, this delay can be changed easily with the `-d` option. You can either specify the delay before you run the `top` command or change it interactively.
+
+```
+top -d 10  //updates info every 10 seconds
+```
+
+![changing delay interactively](/images/top_delay.png)
+
+#### Simplifying the Processes on Top
+Oftentimes you're just trying to view to behavior of a handful of processes rather than all the processes on the system. Removing the processes you don't need
+can be really useful for you AND the TAs (who have to look and interpret your top output). Here are some useful options, some of which I think you should use everytime you need a top screengrab for homework. 
+
+| ![nonidle processes](/images/nonidle_option.png) | 
+|:--:| 
+| *Filtering out all processes that are idle* |
+
+
+
+| ![Processes by PID](/images/pid_option.png) | 
+|:--:| 
+| *Selecting processes with a specific PID* |
+
+
+
+| ![user's processes](/images/user_option.png) | 
+|:--:| 
+| *Displaying all processes pertaining to a specific user* |
