@@ -95,7 +95,7 @@ occupy the foreground at a time**, kind of like how only one process can occupy 
 that is *visible* to the user. While that foreground process is running, the shell (Bash) **isn't necessarily ignoring the commands we type in**, it just doesn't execute them. It will actually wait until the
 foreground is terminated until it will execute any of the subsequent commands I typed in. 
 
-![Bash shell waiting until hello world is done until it runs my ls](/images/shell_waiting_foreground.png)
+![Bash shell waiting until hello world is done until it runs my ls](/images/shell_waiting_foreground.png.png)
 
 This seems super problematic though! How would I run a program and view it on `top` simultaneously? Doesn't that render `top` sort of useless? Well, there's two workarounds. The first and more annoying workaround
 would be to open a second terminal, that way you technically have two foregrounds to operate with. The second option is to send the process to the **background**. Running a command in the background 
