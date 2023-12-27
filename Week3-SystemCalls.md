@@ -93,11 +93,13 @@ make. Finally we make a call to the foo function which will (1) invisibly push t
 Here is some of the assembly for the `foo` function. It is quite complicated because of the additions...please don't waste your time trying to understand it because the addition is intuitively simple. 
 I've highlighted some parts that I think are worth looking at
 
-![assembly instructions for foo])(/images/stack-foo.png)
+![assembly instructions for foo](/images/stack-foo.png)
 
 The first highlighted section, again, stores the previous stack frame's base pointer and levels the stack pointer and base pointer. All the space in between the two highlighted sections has to do with the
 additions. The final section stores the result into register `%eax`, which I'm assuming represents the variable `c`. Again, this an is optimization because the values is getting stored in a register, rather
-than storing it on the stack, which requires us to update the stack pointer. Finally, we move the stack pointer up by using `pop` and then we `ret` to the address that was previously stored.
+than storing it on the stack, which requires us to update the stack pointer. Finally, we move the stack pointer up by using `pop` and then we `ret` to the address that was previously stored. If you're more
+interested in an explanation of some of the assembly instructions, [look here](https://www.cs.virginia.edu/~evans/cs216/guides/x86.html) and if you want to know more about stack frames, you can
+[look here](https://rabbit.eng.miami.edu/class/519/frames.html).
 
 ## User Space vs Kernel Space <a name = "user-vs-kernel"></a>
 
