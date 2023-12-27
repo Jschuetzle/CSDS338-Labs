@@ -102,5 +102,19 @@ interested in an explanation of some of the assembly instructions, [look here](h
 [look here](https://rabbit.eng.miami.edu/class/519/frames.html).
 
 ## User Space vs Kernel Space <a name = "user-vs-kernel"></a>
+So far we've talked about all the sections of the program's memory layout, BUT these are just the sections in **user space**. Let's look at an actual process map to determine how large that chunk is compared with what the total chunk that the process is allowed to use. Type `top -u caseid` and copy/remember the PID of some random process on the output. We can look at that process's memory layout by typing
 
+```
+cat /proc/<pid>/maps | less
+```
+This now shows us the enitre memory layout of the process, with the large empty areas being condensed (DIFFICULT QUESTION TO PONDER: does these areas actually exist on RAM?). Notice that the addresses increase
+as you scroll down, so if we want to see the very top address of user space, we can run `tac /proc/<pid>/maps | less` which just revereses the contents by line. Here's the output I got on my chromebook.
+
+![top of user space in process map](/images/pmap.png)
+
+In class, Loui discusses that the ratio of user space : kernel space is 3:1. THIS IS TRUE for 32-bit x86 Linux machines, by default. In reality, this ratio is different from system to system, and sometimes is
+actually adjustable by a kernel parameter if you have permission to act as root. FOR MY OUTPUT, you can see the top of the stack ends at `7fff53c9e000`, which is about *half* the max of `ffffffffffff`. So for my
+system, the real ratio is about 1:1 for user space to kernel space, which is true of many 64-bit x86 Linux machines. Here's a [stack exchange post](https://unix.stackexchange.com/questions/509607/how-a-64-bit-process-virtual-address-space-is-divided-in-linux) that seems to agree if you're more interested.
+
+But what exactly is *kernel space* and why is it necessary?
 
