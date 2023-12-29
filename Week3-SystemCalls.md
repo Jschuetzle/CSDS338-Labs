@@ -16,9 +16,9 @@ int foo(int a){
 }
 
 void bar(void){
-  int local;
+  int local = 10;
   foo(10);
-  //after
+  local = 15;
 }
 ```
 Hopefully you understand that each of the variables and functions in the following program are stored in memory...But what exact does *memory* mean? What does it look like? What all is stored in *memory* for 
