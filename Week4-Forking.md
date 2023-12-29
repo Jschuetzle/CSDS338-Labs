@@ -106,11 +106,7 @@ all the system calls that Bash executes is printed, BUT the final line seems unf
 
 This is odd. If you look at the documentation (`man read`), you'll see that the function should take 3 parameters. So why might it be getting cut off? Well, the single parameter that IS listed represents a file descriptor. We're not going to dive deep into what a file descriptor is, but it's super important that it's value is 0. The file descriptor with value 0 is the standard input for the terminal...meaning that **the strace output didn't finish because bash didn't finish...**bash is currently waiting for input from the user, which makes sense!
 
-We can abuse this by typing in `ls` and running it...
-
-![typing ls during the hanging `strace bash` output](/images/typels-during-bashstrace.png)
-
-Which leads to the following output
+We can abuse this by typing in `ls` and running it, which leads to the following output...
 
 ![ls command getting read](/images/stracebash-ls.png)
 
@@ -122,6 +118,8 @@ Ok! So Bash must be the calling process...not so fast. Remember that `exec()` we
 If you look at the documentation of this function (`man clone`), you'll read that this function is very similar to `fork()`. For our purposes, they are basically the same. We know that `fork()` creates an entirely new child process that is basically a duplicate of the parent process (both memory spaces have the same content), the only difference being the value that is returned from `fork()`. 
 
 What's important here is the next line of that output **then prints the contents of the file...This must mean that `ls` has been executed!** So, this clone had to have been the *calling process*, i.e. the process where `execve()` syscall was invoked and where `ls` executed. We can ensure that the child finished it's execution by looking at the return value of the `clone()` syscall, which is the PID of the child. 
+
+![strace bash output clone call](/images/stracebash-wait.png)
 
 From the screenshot, we see that the PID is `16745`, and just a few syscalls after the `clone()`, there are two calls to `wait()`. If you read the documentation for this command (`man wait`), you'll read that it's job is to wait for the state of the child to change (probably from running to sleeping or running to terminated). If it successfully does this, the return value is the PID of the child process...**which on the output is the same PID as the return value from `clone()`**.
 
