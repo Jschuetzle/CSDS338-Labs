@@ -1,9 +1,8 @@
 # What we're doing today
 + [Quick Syscall Review](#syscall)
 + [Examining `ls` Further](#ls)
-+ [Forking](#fork)
-+ [User Space vs Kernel Space](#user-vs-kernel)
-+ [System Calls](#system-calls)
++ [Bash as a Calling Process](#bash)
+
 
 ## System Calls Review <a name = "syscall"></a>
 Last week we reviewed a lot of material. We went over 
@@ -38,12 +37,21 @@ strace ls
 ```
 If the operating system doesn't recognize those commands, you can install them with the package manager of whatever system you're using (for me, it's `apt install strace`). These commands won't necessarily output the source code, but they will output all the dynamic library calls and system calls that occur during execution, and this will inform us on the execution behavior of `ls`. I'm going to dive deeper into the output in class as opposed to here, but I will list some sequences of instructions that I think are important here.
 
-#### strace Output
+### strace Output
 The very first line of our `strace` output tells us a lot about the nature of the `ls` command. 
 
 ![replacing current program for ls binary](/images/execve.png)
 
-It seems that `ls` is already a binary executable on the OS, and it's stored in the `/bin` directory (which stands for binary). When we type in `ls` and press enter, that doesn't mean that this binary is executed right away though! The `execve()` reveals that it's actually getting *loaded* into the memory of the calling process. We'll talk about what the calling process could be in a little bit...but understand that the `execve()` call is allowing for execution of a new program. Loui has hopefully talked a little bit about forking and about process creation...`exec()` is different than forking in the following way...
+It seems that `ls` is already a binary executable on the OS, and it's stored in the `/bin` directory (which stands for binary). You can even verify this by navigating to the `/bin` directory, and typing the following command.
+```
+ls -l | grep ls
+```
+
+If this command is extremely confusing, don't worry...I dont' expect you to know everything going on. `grep` simply just picks out any line that contains the word I typed after...kind of like Ctrl+f in Chrome. On my output, you can see the third file that got listed is the executable binary for the `ls` command...
+
+![ls binary](/images/binls.png)
+
+When we type in `ls` and press enter, that doesn't mean that this binary is executed right away though! On the strace output, the `execve()` reveals that it's actually getting *loaded* into the memory of the calling process. We'll talk about what the calling process could be in a little bit...but understand that the `execve()` call is allowing for execution of a new program. Loui has hopefully talked a little bit about forking and about process creation...`exec()` is different than forking in the following way...
 
 ```
 One sometimes sees execve() (and the related functions described
@@ -61,7 +69,9 @@ existing process (the calling process) to execute a new program.
 | Directory names getting written to terminal...INSTANTLY! |
 
 
-#### ltrace Output
+### ltrace Output
+I think the `ltrace` is less insightful than the `strace` output, and I won't spend that much time on it. But, here are some interesting actions going on under the hood. 
+
 | ![directory name getting copied to memory](/images/ltrace-copy-dirname.png) | 
 |:--:| 
 | Subdirectory name getting copied into heap |
@@ -73,6 +83,56 @@ existing process (the calling process) to execute a new program.
 | ![Contents of the stack buffer getting written to terminal](/images/ltrace-stack-writes.png) | 
 |:--:| 
 | Contents of the stack buffer getting written to terminal |
+
+
+## Investigating the 'Calling' Process <a name = "bash"></a>
+Remember from the strace, that the `exec()` call simply overwrites the memory of the current process with that of a new program--the new program being `/bin/ls`. But what exactly is the *current process* in this situation?
+
++ **Who is running before `/bin/ls` is loaded into memory?**
+
+We can't simply get this information from `strace ls`, because `strace` will only tell us which syscalls are made _after_ `ls` begins executing. This is problematic because we want information *before* it starts executing. That's where `bash` comes into play. 
+
+During the first week, I talked briefly about [Bash](Week1Intro.md#terminal) as an interpreter for the commands you type in the terminal. It's job is to read the command you typed and perform specific actions in order for the program to run successfully. After that is done, it must listen and wait for any future commands. This is great, **but how do you prove that Bash is calling `ls`?**.
+
+We can do this by **using strace on bash!** After running this command
+
+```
+cat | strace bash
+```
+
+all the system calls that Bash executes is printed, BUT the final line seems unfinished...
+
+![final line of strace for bash](/images/strace-bash.png)
+
+This is odd. If you look at the documentation (`man read`), you'll see that the function should take 3 parameters. So why might it be getting cut off? Well, the single parameter that IS listed represents a file descriptor. We're not going to dive deep into what a file descriptor is, but it's super important that it's value is 0. The file descriptor with value 0 is the standard input for the terminal...meaning that **the strace output didn't finish because bash didn't finish...**bash is currently waiting for input from the user, which makes sense!
+
+We can abuse this by typing in `ls` and running it...
+
+![typing ls during the hanging `strace bash` output](/images/typels-during-bashstrace.png)
+
+Which leads to the following output
+
+![ls command getting read](/images/stracebash-ls.png)
+
+### Forking
+Ok! So Bash must be the calling process...not so fast. Remember that `exec()` we talked about? If you scroll through the output of this strace, you'll see that there are *no invocations* of `exec()`. So we went through all this trouble and we still don't know who the calling process is. But the following syscall reveals what's really going on here...
+
+![strace bash output clone call](/images/stracebash-clone.png)
+
+If you look at the documentation of this function (`man clone`), you'll read that this function is very similar to `fork()`. For our purposes, they are basically the same. We know that `fork()` creates an entirely new child process that is basically a duplicate of the parent process (both memory spaces have the same content), the only difference being the value that is returned from `fork()`. 
+
+What's important here is the next line of that output **then prints the contents of the file...This must mean that `ls` has been executed!** So, this clone had to have been the *calling process*, i.e. the process where `execve()` syscall was invoked and where `ls` executed. We can ensure that the child finished it's execution by looking at the return value of the `clone()` syscall, which is the PID of the child. 
+
+From the screenshot, we see that the PID is `16745`, and just a few syscalls after the `clone()`, there are two calls to `wait()`. If you read the documentation for this command (`man wait`), you'll read that it's job is to wait for the state of the child to change (probably from running to sleeping or running to terminated). If it successfully does this, the return value is the PID of the child process...**which on the output is the same PID as the return value from `clone()`**.
+
+From this output, we can determine the sequence of events to be
++ Bash interprets the text in the terminal (standard input)
++ Bash fetches the `ls` binary executable
++ Bash clones, creating a child process
++ Child process executes `ls` and terminates
++ Bash goes back to listening to terminal
+
+
 
 
 
