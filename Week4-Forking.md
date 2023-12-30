@@ -131,7 +131,7 @@ From all of this, we can determine the sequence of events to be
 + Child process executes `ls` and terminates
 + Bash goes back to listening to terminal
 
-![Life cycle of `ls`](/images/ls-lifecycle.png)
+![Life cycle of `ls`](/images/ls-lifecyle.png)
 
 ## Parent/Child Execution Order <a name = "parent-child"></a>
 While I was messing around with the strace outputs, I noticed that they weren't always consistent. In the example I put in these notes, you saw that the directory contents were written to the terminal _directly after_ the call to `clone()`. BUT, sometimes they appeared to cut off the `wait()` syscall like so.
