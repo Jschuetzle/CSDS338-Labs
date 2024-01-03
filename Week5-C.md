@@ -3,7 +3,7 @@
 + [Pointers and Addresses](#ptr)
 + [Structs](#struct)
 + [Memory Allocation](#malloc)
-+ [Parameter Passing](#parameter)
++ [Practice Exercise](#practice)
 
 ## C vs Java <a name = "c"></a>
 I know the background experience for students in this class can be diverse...some students have worked in multiple languages and some only one language. However, I know everyone here has some level of experience with
@@ -164,6 +164,64 @@ p2->x = 10   //equivalent to (*p2).x = 10
 What's the point of using a struct pointer though? Frequently, we will initialize a struct dynamically by using `malloc()` or its related functions, which all have a return type of pointer. So doing something like `struct Point p1 = malloc(sizeof(struct Point));` isn't allowed because the types don't match.
 
 ## Malloc and etc. <a name = "malloc"></a>
+I've used the function `malloc()` a few times in this lecture without explaining what it actually does, so I want to devote the end of the lesson to exactly that. Essentially, `malloc()` will search the heap for a segment of memory of a specified size. Right now, we're not going to worry about _how_ it finds/determines the segment, rather just know that after we find a segment, it will return the first address of the chunk as a pointer. **So basically, `malloc()` returns a pointer to a new memory segment**. 
+
+```
+#include <stdio.h>
+#include <stdlib.h>
+
+void main(){
+  int* ptr = malloc(10 * sizeof(int));    //creating memory to fit 10 ints
+  printf("Address of ptr: %p\n", &ptr);
+  printf("Address that ptr points to: %p\n", ptr);
+}
+```
+
+![output of the above code](/images/simple-malloc.png)
+
+
+Notice how the return values are different...the pointer will be stored in the stack because it is a local variable, and the address that `malloc()` returns will be from the heap (more on that [here](./Week3-SystemCalls.md#pms) if you're confused). The function only takes one parameter, and that is the size, in bytes, of the dynamically allocated memory chunk. We need to be careful though, because the parameter is absolute. If we wanted to allocate space for five integers, then the code would look like
+
+```
+int* ptr = malloc(5 * sizeof(int));  //correct
+int* ptr2 = malloc(5);    //incorrect
+```
+
+Technically, the first line is just making the call `malloc(20)` since the size of an int is 4 bytes (32 bit), but this is bad practice because it is less readable and more difficult to understand if there's a bug. Opposed to Java, which uses bracket notation for arrays (int []), you'll oftentimes see `malloc()` being used to create an array. This seems confusing at first, but it actually reduces the amount of memory your program takes up. **Why store the entire array in memory when you could instead store just the address of the first value?**
+
+The final important thing to learn about memory allocation is memory deallocation. Java has a garbage collector, so when a dynamically allocated segment is not of use anymore, e.g. if a pointer is popped off the stack, the garbage collector will automatically open up the segment of memory on the heap that was previously being used. In C, we don't have the luxury of a garbage collector, so the programmer has to manually free up the memory. We can do this with the library call `free()` which takes a pointer and deallocates the memory that it points to. 
+
+```
+struct Point {
+  int x;
+  int y;
+}
+
+int main() {
+  struct Point p1;
+  p1.x = 3;
+  p1.y = -2;
+  printf("p1: (%d, %d)\n", p1.x, p1.y);
+
+  struct Point* p2 = &p1;
+  p2->x = -8;
+  p2->y = 10;
+  printf("p1: (%d, %d)\n", p1.x, p1.y);
+
+  free(p2);    //CHANGE MADE HERE
+  return 0;
+}
+```
+For this class, it won't make any practical difference whether you free up memory. The programs were dealing with are often short lived and don't consume massive amounts of memory. However, it is best practice to use `free()`. If you don't, a **memory leak** can occur. This is when previously allocated memory isn't deallocated, therefore _heap spaced is wasted until there is no heap space left_, and the program crashes. In a professional setting, it could be fatal to the application if you didn't free up memory.
+
+## Practice <a name = "practice></a>
++ Using malloc, create two arrays: one `int` array and one `char` array. Size and initialize the arrays so that the former contains digits 0-9 and the latter contains the lowercase alphabet a-z, both in order. Print the associated number-letter pairs to the console while using all the letters, i.e. once the end of the digits array reaches the end, loop back to the beginning.
+
+`a0 b1 c2 ... j9 k0 ... z5` 
+
+If you encounter a heap buffer overflow, then you went past the bounds of the end of the array.
+
++ Create an implementation of a Linked List by creating a `struct Node`. Initialize the linked list so that the length is at least 3, traverse the linked list, and output the traversal. (Hint: it's easier to create use struct pointers)
 
 
 
