@@ -214,7 +214,7 @@ int main() {
 ```
 For this class, it won't make any practical difference whether you free up memory. The programs were dealing with are often short lived and don't consume massive amounts of memory. However, it is best practice to use `free()`. If you don't, a **memory leak** can occur. This is when previously allocated memory isn't deallocated, therefore _heap spaced is wasted until there is no heap space left_, and the program crashes. In a professional setting, it could be fatal to the application if you didn't free up memory.
 
-## Practice <a name = "practice></a>
+## Practice <a name = "practice"></a>
 + Using malloc, create two arrays: one `int` array and one `char` array. Size and initialize the arrays so that the former contains digits 0-9 and the latter contains the lowercase alphabet a-z, both in order. Print the associated number-letter pairs to the console while using all the letters, i.e. once the end of the digits array reaches the end, loop back to the beginning.
 
 `a0 b1 c2 ... j9 k0 ... z5` 
