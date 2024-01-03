@@ -84,11 +84,86 @@ int main(){
 ![output of following program](/images/dereference.png)
 
 ## Structs <a name = "struct"></a>
-The closest thing we have in C to classes/objects are structs.
+The closest thing we have in C to classes/objects are structs. You can think of structs as a _consolidation of information_, similar to classes in Java, but only containing the data fields (variables). This allows you to represent a datatype that is more complicated than the primitive types like int or char. For example, if you wanted to create a datatype that modeled a student, you can utilize a struct.
 
+```
+struct Student {
+  char name[30];
+  int age;
+  int* grades;
+};
 
+int main(){
+  struct Student jackson;
+}
+```
 
+You would write this definition of the struct in the global context of the program, like how you would with a function. Notice, when you define a variable to be a struct, you must include the `struct` keyword, because it isn't simply a `Student`, rather it is a struct Student`. Just like in Java, if we want to assign values to struct members, we can do so using the **dot operator**.
 
+```
+int main(){
+  struct Student jackson;
+
+  strcpy(jackson.name, "Jackson Schuetzle");
+  jackson.age = 20;
+  jackson.grades = (int *) malloc(4*sizeof(int));
+  jackson.grades[0] = 95;
+  jackson.grades[1] = 92;
+  jackson.grades[2] = 86;
+  jackson.grades[3] = 79;
+
+  printf("Student being printed:\n");
+  printf("Name: %s\n", jackson.name);
+  printf("Age: %d\n", jackson.age);
+  printf("Grades: ");
+  for(int i=0; i<4; i++){
+    printf("%d ", jackson.grades[i]);
+  }
+
+return 0;
+}
+```
+
+![output of the above program](/images/basicstruct-output.png)
+
+The special thing about structs is accessing data members through a struct pointer. Just like how we created pointers to primitive types, we can create a pointer to a struct in the same way. Here's an example with a more simple type of struct, named `Point`, where we change the values of the data members through means of the pointer. 
+
+```
+struct Point {
+  int x;
+  int y;
+}
+
+int main() {
+  struct Point p1;
+  p1.x = 3;
+  p1.y = -2;
+  printf("p1: (%d, %d)\n", p1.x, p1.y);
+
+  struct Point* p2 = &p1;
+  p2->x = -8;
+  p2->y = 10;
+  printf("p1: (%d, %d)\n", p1.x, p1.y);
+
+  return 0;
+}
+```
+
+![change the members of a struct through use of a pointer](/images/struct-pointer.png)
+
+If you looked closely, you'll notice that we didn't use the dot operator on the struct pointer, instead we used `->` which is called the **arrow operator**. This is because using the dot operator on a pointer wouldn't make any sense. The value of the struct pointer `p2` is just some address, namely the address of struct `p1`. When the dot operator is used, the compiler will access and read the variable's data as if it were a collection of values. If we used the dot operator on a pointer, the compiler will recognize that the value it's accessing/reading _doesn't represent a struct_, and an error will be thrown. If I inserted `.` instead of `->` in the above code, I get the following message after trying to compile.
+
+![incorrectly using dot operator on a struct pointer](/images/dotoperator-on-pointer.png)
+
+So, in order to access the data members through the struct pointer `p2`, we must **dereference the struct pointer**. And that's essentially what the arrow operator does.
+
+```
+p2->x = 10   //equivalent to (*p2).x = 10
+```
+
+What's the point of using a struct pointer though? Frequently, we will initialize a struct dynamically by using `malloc()` or its related functions, which all have a return type of pointer. So doing something like `struct Point p1 = malloc(sizeof(struct Point));` isn't allowed because the types don't match.
+
+## Malloc and etc. <a name = "malloc"></a>
 
 
 
