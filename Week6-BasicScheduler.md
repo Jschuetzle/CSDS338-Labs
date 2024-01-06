@@ -1,6 +1,7 @@
 # What we're doing today
 + [Scheduler Design for FIFO](#design)
 + [Creating a Queue](#queue)
++ [Set Up for Simulation](#setup)
 + [Coding the Scheduler in C](#sched)
 
 ## Scheduler Design Discussion for FIFO <a name = "design"></a>
@@ -62,4 +63,169 @@ void init_queue(queue* q){
 ```
 
 ### Enqueue
+Enqueueing is the same as insertion into the end of a linked list. The 3 basic things that must be done to enqueue:
++ create a new node
++ point the current tail toward the new node
++ set the new node as the tail
 
+This piece of code gets those essentials done along with taking care of the case where we `enqueue()` into an empty queue.
+
+```
+bool enqueue(queue* q, pcb* process){
+        //creation of new node
+        node* newnode = malloc(sizeof(node));
+        if(newnode == NULL){
+                return false;   //return false if malloc fails
+        }
+        newnode->process = process;
+        newnode->next = NULL;
+
+        //make current tail point to this new node...check first if there was a tail to begin with
+        if(q->tail != NULL){
+                q->tail->next = newnode;
+        }
+        q->tail = newnode;
+
+        //case where the node is being enqueued into an empty list
+        if(q->head == NULL){
+                q->head = newnode;
+        }
+        return true;
+}
+```
+
+### Dequeue
+Dequeue is the same as deleting the first node in a linked list. The essential parts are:
++ Store the contents of the current head
++ Move the head forward
++ Delete the previous head and return its stored contents
+
+Here's the following code...
+
+```
+pcb* dequeue(queue* q){
+        if(q->head == NULL){
+                return NULL;
+        }
+
+        //store the contents of current head...for free and return
+        node* temp = q->head;
+        pcb* result = temp->process;
+
+        //move the head forward
+        q->head = q->head->next;
+        if(q->head == NULL){
+                q->tail = NULL;  //special case where queue contains no elements after dequeue
+        }
+
+        free(temp);
+        return result;
+}
+```
+
+We need to test that the queue works, but we don't have our `struct proc` defined yet. For simplicity, define `struct proc` with one int member and create a couple instances. Enqueue all processes, and then use a while loop to dequeue all processes while printing out the returned structs data member values, and make sure these values match with what was enqueued.
+
+
+## Set Up <a name = "setup"></a>
+Now that we've created a working queue, we're going to focus on what should be contained in `struct proc` and how we will 'load a process on the CPU'. I say that in air quotes because the CPU is simply a pointer to a struct process and switching simply changes the value of the pointer. **Normally, performing a context switch is much much more complicated.** More [here](https://www.youtube.com/watch?v=iDJ4RuaJEOQ&list=PLVW70f0xtTUxHXRtZhGEJAiBDFx-ofc_G&index=6) if you're interested (47:00-1;02:00)
+
+![diagram of specifics of a context switch](/images/context-switch.png)
+
+Trivially, each process will need a PID and some amount of execution time. It would also be good for future analysis to include when the process is created and when it finishes execution (**total turnover time** and **waiting time**). 
+
+```
+typedef struct process_control_block {
+        int pid;
+        int arrival;
+        int burst;
+        int finish;
+} proc;
+```
+Now, we have all the components to create the scheduling simulation. First we must create a queue, the 'CPU', and some other variables/counters. Those will include a clock for time, a pid generator, and a counter to keep track of the \# of processes that have finished.
+
+```
+int main() {
+        queue q;
+        init_queue(&q);
+
+        proc* cpu;
+
+        int time = 0;
+        int pid = 0;
+        int completed = 0;
+}
+```
+
+We can initialize some `proc`s so that they are present in the queue at the beginning of the simulation, but that means they must have some execution time already defined. This brings up the issue of how we'll assign execution time. In different types of scheduling schemes, a **time slice** is often assigned to a process, and once that time slice is used up, the process is preempted. OUr basic implementation though will allow each process to run until termination, therefore we must define the amount of time a process takes to execute until termination.
+
+This _burst time_ can be assigned randomly once a process enters a queue. I created a function that generates a random burst time...for simplicity, it will be between 1 and 5 clock units.
+
+```
+#include <stdlib.h>
+#define BURST_LOWER 1
+#define BURST_UPPER 5
+
+int rand_burst() {
+        return (rand() % (BURST_UPPER - BURST_LOWER + 1)) + BURST_LOWER;
+}
+```
+
+And now, the processes will be initialized and enqueued
+
+```
+int main() {
+        //... previous code
+
+        proc p1 = { .pid = pid++, .arrival = 0, .burst = rand_burst() };
+        proc p2 = { .pid = pid++, .arrival = 0, .burst = rand_burst() };
+
+        enqueue(&q, &p1);
+        enqueue(&q, &p2);
+}
+```
+
+## Coding the Scheduler <a name = "sched"></a>
+There's many ways to run the simulation. You could run the simulation until the queue is empty (just make sure the rate of incoming procs is less than the rate of termination procs). You could run until a certain number of processes have completed. You could run until a certain timestamp. For simplicity, I have chosen the timestamp method.
+
+I will paste the code here, with comments, and talk more thoroughly about it in class.
+
+```
+#define MAX_TIME 50
+int total_turnover = 0;
+
+while(time < MAX_TIME){
+        cpu = dequeue(&q);
+
+        //process has completed execution once this loop is done
+        for(int i=0; i<(cpu->burst); i++){
+                time++;
+
+                //for every tick, I want there to be a chance that a new process goes in the queue
+                //the average time for a new process to spawn needs to be greater than average time for process to finish,
+                //or else queue will never stop
+
+                int r = (rand() % 100) + 1;
+                if(r < 35){
+                        //create new pcb, and enqueue
+                        pcb* temp = malloc(sizeof(pcb));
+                        temp->pid = pid++;
+                        temp->arrival = time;
+                        temp->burst = generate_burst_time();
+
+                        enqueue(&q, temp);
+                }
+        }
+
+        completed++;
+        cpu->finish = time;
+        total_turnover += (time - cpu->arrival);
+
+        printf("Terminated process\n");
+        printf("PID: %d    Arrival: %d    Burst: %d    Finish: %d\n", cpu->pid, cpu->arrival, cpu->burst, cpu->finish);
+        printf("Current Time: %d    Processes Executed: %d    Total Turnover: %d\n\n\n", time, completed, total_turnover);    
+}
+
+printf("Average Turnover Time: %f\n", (double)total_turnover / completed); 
+```
+
+This code actually has a segmentation fault...we will figure it out in class. If you'd like, try to debug it on your own! (Hint: it has to do with an empty queue)
