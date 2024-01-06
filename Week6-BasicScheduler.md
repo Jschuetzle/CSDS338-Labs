@@ -33,4 +33,33 @@ Because we're utilizing FIFO, that is closely associated to using a double sided
 
 ![queue diagram](/images/queue.png)
 
-For simplicity, and pointer practice, we're going to create a linked-list based queue.
+For simplicity, and pointer practice, we're going to create a linked-list based queue. This will require a `struct queue` and a `struct node` to encapsulate whatever we choose to store in the queue.
+
+```
+typedef struct queue{
+        node* head;
+        node* tail;
+} queue;
+
+typedef struct node {
+        proc* process;
+        struct node* next;
+} node;
+```
+
+Since constant time operations are desired for enqueueing and dequeuing, the `struct queue` stores a pointer to the head and a pointer to the tail. We can use the `struct node` as a container for storing a process. Conceptually, it wouldn't make sense to have a data member in the `struct proc` called next, because the process isn't guaranteed to be in a queue, and we really only want to store information about the current process in `struct proc`.
+
+If you are not familiar with `typedef`, don't worry. Essentially, it adds a new name for an existing type, that way we don't have to type `struct struct_name` everytime--making the code more readable. Note though, it _doesn't_ create a new type, just an alias to an already existing type.
+
+### Queue Initialization
+This is not necessary, but we can create something similar to a Java constructor that will return an empty queue, except we don't have to return anything here since the argument is a pointer.
+
+```
+void init_queue(queue* q){
+        q->head = NULL;
+        q->tail = NULL;
+}
+```
+
+### Enqueue
+
