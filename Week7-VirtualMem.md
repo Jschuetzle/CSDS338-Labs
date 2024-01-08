@@ -76,8 +76,8 @@ Say the top of the heap is currently at 0x1000 and we ask for 0x400 bytes. Our c
 So now, when we call `free(void* ptr)` on an address, all that needs to be done is to examine the header behind the malloc'd address in order to figure out how large the chunk is. You would have to ensure that each header is the same size, and you can do so by using a struct. 
 
 ```
- typedef struct malloc_header {
-  int memory_chunk_size;
+ typedef struct header {
+  int size;
 } header;
 ```
 
@@ -92,23 +92,138 @@ We could technically try to copy all of the memory that was above the newly free
 
 The only solution is to mark that the block has been freed without returning it to the OS, so that future calls to malloc can use re-use the block. This is actually quite smart because now not every call to `malloc()` would require a syscall (additional overhead). Instead, `malloc()` can execute entirely in user space with the _cached memory_ in the heap.
 
-In order to do this we'll need be able to access the metadata for each free block, just like how we did for each allocated block.
+In order to do this we'll need be able to access the metadata for each free block, just like how we did for each allocated block. For simplicity, we'll create only one struct header and use it for both allocated and free blocks...using two different struct headers can lead to differently sized headers, which can be confusing. For now, we added two attributes onto our original struct.
+
 ```
-typedef struct free_header {
-  int size_of_hole;
-  struct free_header* next;
+typedef struct header {
+  int size;
+  struct header* next;   //pointer to next header in free list
+  int free;    //signals if header is preceding a free block
 } free_header;
 ```
 To make it easy for `malloc()` to identify which blocks are free, we can have all the free metadata structs be apart of a linked list, more commonly known as the **free list**.
 
 ![](/images/free-list.png)
 
-Now, when `malloc()` is choosing a chunk of space for an allocation, it can first look through the free list and choose what it thinks is the best chunk for the job.
+Now, when `malloc()` is choosing a chunk of space for an allocation, it can first look through the free list and choose what it thinks is the best chunk for the job. In our case, we'll be using a _first fit_ policy, i.e. the first viable free chunk we find, we will use.
 
-## Implementation for Malloc
-We want to store things on the heap, but that requires bookkeeping, which also takes up memory on the heap. Kind of like who came first, the chicken or the egg. 
+## Coding our own Malloc
+Before coding, let's write down the methodology for both malloc and free...
 
-What can be done is the use of **headers**.
-For every allocation done with `malloc()`, the size of that memory will be reserved. In order to keep track of how big the chunk is, a `struct header` is placed before EVERY allocation, and it has an int field called `memory_chunk_size`. That means we're spending 4 bytes before every allocation to store bookkeeping info about that allocation.
+#### Malloc
+1. check preconditions for size argument
+2. create a pointer for the final header
+3. traverse the free list
+  4a. if free header found,
+    - set header as allocated
+      
+  4b. if not found,
+    - request for more space
+ 
+5. return address after header
 
-After that allocation, I can check whether the space succeeding it is allocated or not. If it is allocated, then I don't have to do anything. Otherwise, if it's free, then we need to add a `struct freelist
+#### Free
+1. check preconditions for pointer argument
+2. obtain pointer to header
+3. set header as free
+
+Here's the code I will write in class...I will also go over the helper functions and if there's time we'll test it out a bit.
+
+```
+typedef struct header {
+        size_t size;
+        struct header* next;
+        int free;
+} header;
+
+#define HEADER_SIZE sizeof(header)
+
+void* heap = NULL;   //points to BASE of heap
+
+void* malloc(size_t size);
+void* realloc(void* ptr, size_t size);
+void* calloc(size_t nelem, size_t elsize);
+header* find_free_block(header** last, size_t size);
+header* request_space(header* last, size_t size);
+void free(void* ptr);
+
+void* malloc(size_t size){
+        //check preconditions
+        if(size <= 0){
+                return NULL;
+        }
+
+        header* block;  //will become ptr to header 
+
+        //special case where this is the FIRST malloc being called on heap
+        if(!heap){
+                block = request_space(NULL, size);
+                if(!block) {
+                        return NULL;    //request_space() failed
+                }
+                heap = block;
+        } else {
+                header* last = heap;    //only used when we can't find a free chunk
+
+                block = find_free_block(&last, size);
+
+                //no viable free blocks found
+                if(!block){
+                        block = request_space(last, size);
+                        if(!block){
+                                return NULL;    //request_space() failed
+                        }
+                } else {
+                        block->free = 0;
+                }
+        }
+
+        return block+1;    //return address after the header
+}
+
+header* find_free_block(header** last, size_t size){
+        //start looking from base of heap...it's guaranteed to be header
+        header* current = heap;
+
+        //need current to be nonnull...keep traversing if we can't find viable chunk
+        while(current && !(current->free && current->size >= size)){
+                *last = current;
+                current = current->next;
+        }
+        return current;
+}
+
+header* request_space(header* last, size_t size){
+        //will store header for new space
+        header* block;
+        block = sbrk(0);
+
+        //increase heap space
+        void* request = sbrk(size + HEADER_SIZE);
+        if(request == (void *) -1){
+                return NULL;   //sbrk failed
+        }
+
+        //update the linkedlist
+        if(last){
+                last->next = block;
+        }
+
+        //initialize new header accordingly
+        block->size = size;
+        block->next = NULL;
+        block->free = 0;
+        return block;
+}
+
+void free(void* ptr){
+        //check preconditions
+        if(!ptr){
+                return;
+        }
+
+
+        header* block_ptr = (header *)ptr - 1;
+        block_ptr->free = 1;
+}
+```
