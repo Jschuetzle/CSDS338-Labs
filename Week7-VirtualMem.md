@@ -1,6 +1,7 @@
 # What we're doing today
 + [What is `malloc()`?](#malloc-intro)
-+ [Free List and Headers](#headers)
++ [Headers](#headers)
++ [Free List](#freelist)
 + [Simple Implementation](#simple)
 
 
@@ -65,11 +66,44 @@ When free is passed a pointer that was previously returned from malloc, it's sup
 
 + **If `free()` only receives a pointer, how does it know how big the memory chunk to release is?**
 
-## Free List and Headers <a name = "headers"></a>
-To answer this question, we'll start with a very simple implementation of `malloc()` which utilizes the syscall `sbrk()`.
+## Headers <a name = "headers"></a>
+A common trick to work around this is to store metadata about a memory region in some space that we squirrel away just below the pointer that is returned. 
 
+![headers for allocated space and free space](/images/malloc-headers.png)
 
+Say the top of the heap is currently at 0x1000 and we ask for 0x400 bytes. Our current malloc will request 0x400 bytes from sbrk and return a pointer to 0x1000. If we instead save, say, 0x10 bytes to store information about the block, our malloc would request 0x410 bytes from sbrk and return a pointer to 0x1010, hiding our 0x10 byte block of meta-information from the code that's calling malloc.
 
+So now, when we call `free(void* ptr)` on an address, all that needs to be done is to examine the header behind the malloc'd address in order to figure out how large the chunk is. You would have to ensure that each header is the same size, and you can do so by using a struct. 
+
+```
+ typedef struct malloc_header {
+  int memory_chunk_size;
+} header;
+```
+
+**How do we actually free the memory though?**
+
+## Free List <a name = "freelist></a>
+We theoretically could just pass in a negative value to `sbrk()` in order to free up memory. However, this would only make sense if the chunk of memory being freed is currently at the end of the heap. If the chunk was in between two other allocations, that would cut off any further chunks and render them useless because they would be past the program break. This is super problematic.
+
+![chunk of memory becoming useless after a naive free()](/images/naive-free.png)
+
+We could technically try to copy all of the memory that was above the newly freed hole, but there's no way to notify all of the pointers on the stack (pointing to the heap) that their addresses need to be adjusted. The copying and syscalls required to achieve this would also incur A LOT of overhead. 
+
+The only solution is to mark that the block has been freed without returning it to the OS, so that future calls to malloc can use re-use the block. This is actually quite smart because now not every call to `malloc()` would require a syscall (additional overhead). Instead, `malloc()` can execute entirely in user space with the _cached memory_ in the heap.
+
+In order to do this we'll need be able to access the metadata for each free block, just like how we did for each allocated block.
+```
+typedef struct free_header {
+  int size_of_hole;
+  struct free_header* next;
+} free_header;
+```
+To make it easy for `malloc()` to identify which blocks are free, we can have all the free metadata structs be apart of a linked list, more commonly known as the **free list**.
+
+![](/images/free-list.png)
+
+Now, when `malloc()` is choosing a chunk of space for an allocation, it can first look through the free list and choose what it thinks is the best chunk for the job.
 
 ## Implementation for Malloc
 We want to store things on the heap, but that requires bookkeeping, which also takes up memory on the heap. Kind of like who came first, the chicken or the egg. 
