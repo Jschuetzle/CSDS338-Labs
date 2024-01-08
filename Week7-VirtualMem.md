@@ -2,7 +2,7 @@
 + [What is `malloc()`?](#malloc-intro)
 + [Headers](#headers)
 + [Free List](#freelist)
-+ [Simple Implementation](#simple)
++ [Coding](#coding)
 
 
 ## Malloc Introduction <a name = "malloc-intro"></a>
@@ -107,7 +107,7 @@ To make it easy for `malloc()` to identify which blocks are free, we can have al
 
 Now, when `malloc()` is choosing a chunk of space for an allocation, it can first look through the free list and choose what it thinks is the best chunk for the job. In our case, we'll be using a _first fit_ policy, i.e. the first viable free chunk we find, we will use.
 
-## Coding our own Malloc
+## Coding our own Malloc <a name = "code"></a>
 Before coding, let's write down the methodology for both malloc and free...
 
 #### Malloc
