@@ -6,22 +6,19 @@
 + [Practice Exercise](#practice)
 
 ## C vs Java <a name = "c"></a>
-I know the background experience for students in this class can be diverse...some students have worked in multiple languages and some only one language. However, I know everyone here has some level of experience with
-Java, and I want to introduce C in terms of how it's different than Java. 
+I know the background experience for students in this class can be diverse...some students have worked in multiple languages and some only one language. However, I know everyone here has some level of experience with Java, and I want to introduce C in terms of how it's different than Java. 
 
 ### Types/Architecture
-The primitive types between Java and C are similar, but further reduced in C. The main types are **char, int, float,** and **double**. If you wanted to use something like a boolean type in C, you'd have to use the
-`#include` directive, which is similar to import statements in Java. Since there is no builtin support for booleans, the expressions inside if statements are really just evaluating to numbers such as 0 or 1.
+The primitive types between Java and C are similar, but further reduced in C. The main types are **char, int, float,** and **double**. If you wanted to use something like a boolean type in C, you'd have to use the `#include` directive, which is similar to import statements in Java. Since there is no builtin support for booleans, the expressions inside if statements are really just evaluating to numbers such as 0 or 1.
 
 !['true' statement in C evaluating to 1](/images/c-statements.png)
 
-The biggest difference though is that **C is not object-oriented**. Although C has structs, which are similar to objects, there doesn't exist an idea of classes/objects that contain data members AND methods. 
-We're really only using basic functionality like if statements, loops, and functions in most of our programs. 
+The biggest difference though is that **C is not object-oriented**. Although C has structs, which are similar to objects, there doesn't exist an idea of classes/objects that contain data members AND methods. We're really only using basic functionality like if statements, loops, and functions in most of our programs. 
 
 ### Memory
-Another big difference in C is that it is a _lower level language_ than Java. There are not as many abstractions in C, and you will often find yourself having to think about the memory of the program more than you
-would in Java. The last primitive type that you need to be familiar with are **pointers**. Pointers are just memory addresses, often in hexadecimal, that represent a location in memory **where each address 
-stores 1 byte of information**. So, the two things you're often dealing with in C are _addresses_ and the _values at each address_. 
+Another big difference in C is that it is a _lower level language_ than Java. There are not as many abstractions in C, and you will often find yourself having to think about the memory of the program more than you would in Java. 
+
+Related to this is the last primitive type: **pointers**. Pointers are just memory addresses, often in hexadecimal, that represent a location in memory **where each address stores 1 byte of information**. So, the two things you're often dealing with in C are _addresses_ and the _values at each address_. 
 
 This is a lot different than Java, where you don't have to deal with raw memory addresses at all. For example, Java abstracts memory allocation by using the `new` keyword whenever a new object is made, and we'll see later how this is dealt with in C.
 
@@ -32,7 +29,7 @@ Just like how I can create an int, I can also create a _pointer to an int_.
 ```
 int main(){
   int a = 5;
-  int* ptr = &a;
+  int* b = &a;
   //or
   int* ptr = (int *) malloc(10*sizeof(int));
 }
@@ -50,7 +47,7 @@ But this is usually TERRIBLE practice and will most likely lead to a segmentatio
 Segmentation fault (core dumped)
 ```
 
-A segmentation fault basically means the program tries to access an address in memory that it has no business accessing. We won't talk much right now about about who/what gets to decide what addresses are accessible, but just know that we want to initialize pointers from one of the following
+A segmentation fault basically means the program tries to access an address in memory that it has no business accessing. We won't talk much right now about who/what gets to decide what addresses are accessible, but just know that we want to initialize pointers from one of the following
 
 1. already existing addresses
 2. malloc
@@ -98,12 +95,13 @@ int main(){
 }
 ```
 
-You would write this definition of the struct in the global context of the program, like how you would with a function. Notice, when you define a variable to be a struct, you must include the `struct` keyword, because it isn't simply a `Student`, rather it is a struct Student`. Just like in Java, if we want to assign values to struct members, we can do so using the **dot operator**.
+You would write this definition of the struct in the global context of the program, like how you would with a function. Notice, when you define a variable to be a struct, you must include the `struct` keyword, because it isn't simply a `Student`, rather it is a `struct Student`. Just like in Java, if we want to assign values to struct members, we can do so using the **dot operator**.
 
 ```
 int main(){
   struct Student jackson;
 
+  //assignment of data members
   strcpy(jackson.name, "Jackson Schuetzle");
   jackson.age = 20;
   jackson.grades = (int *) malloc(4*sizeof(int));
@@ -112,6 +110,7 @@ int main(){
   jackson.grades[2] = 86;
   jackson.grades[3] = 79;
 
+  //printing of data members
   printf("Student being printed:\n");
   printf("Name: %s\n", jackson.name);
   printf("Age: %d\n", jackson.age);
@@ -124,7 +123,11 @@ return 0;
 }
 ```
 
+&nbsp;
+
 ![output of the above program](/images/basicstruct-output.png)
+
+&nbsp;
 
 The special thing about structs is accessing data members through a struct pointer. Just like how we created pointers to primitive types, we can create a pointer to a struct in the same way. Here's an example with a more simple type of struct, named `Point`, where we change the values of the data members through means of the pointer. 
 
@@ -149,11 +152,21 @@ int main() {
 }
 ```
 
+&nbsp;
+
 ![change the members of a struct through use of a pointer](/images/struct-pointer.png)
 
-If you looked closely, you'll notice that we didn't use the dot operator on the struct pointer, instead we used `->` which is called the **arrow operator**. This is because using the dot operator on a pointer wouldn't make any sense. The value of the struct pointer `p2` is just some address, namely the address of struct `p1`. When the dot operator is used, the compiler will access and read the variable's data as if it were a collection of values. If we used the dot operator on a pointer, the compiler will recognize that the value it's accessing/reading _doesn't represent a struct_, and an error will be thrown. If I inserted `.` instead of `->` in the above code, I get the following message after trying to compile.
+&nbsp;
+
+If you looked closely, you'll notice that we didn't use the dot operator on the struct pointer, instead we used `->`, which is called the **arrow operator**. This is because using the dot operator on a pointer wouldn't make any sense. 
+
+The value of the struct pointer `p2` is just some address, namely the address of struct `p1`. When the dot operator is used, the compiler will access and read the variable's data as if it were a collection of values. If we used the dot operator on a pointer, the compiler will recognize that the value it's accessing/reading _doesn't represent a struct_, and an error will be thrown. If I inserted `.` instead of `->` in the above code, I get the following message after trying to compile.
+
+&nbsp;
 
 ![incorrectly using dot operator on a struct pointer](/images/dotoperator-on-pointer.png)
+
+&nbsp;
 
 So, in order to access the data members through the struct pointer `p2`, we must **dereference the struct pointer**. And that's essentially what the arrow operator does.
 
@@ -177,8 +190,11 @@ void main(){
 }
 ```
 
+&nbsp;
+
 ![output of the above code](/images/simple-malloc.png)
 
+&nbsp;
 
 Notice how the return values are different...the pointer will be stored in the stack because it is a local variable, and the address that `malloc()` returns will be from the heap (more on that [here](./Week3-SystemCalls.md#pms) if you're confused). The function only takes one parameter, and that is the size, in bytes, of the dynamically allocated memory chunk. We need to be careful though, because the parameter is absolute. If we wanted to allocate space for five integers, then the code would look like
 
@@ -187,9 +203,14 @@ int* ptr = malloc(5 * sizeof(int));  //correct
 int* ptr2 = malloc(5);    //incorrect
 ```
 
-Technically, the first line is just making the call `malloc(20)` since the size of an int is 4 bytes (32 bit), but this is bad practice because it is less readable and more difficult to understand if there's a bug. Opposed to Java, which uses bracket notation for arrays (int []), you'll oftentimes see `malloc()` being used to create an array. This seems confusing at first, but it actually reduces the amount of memory your program takes up. **Why store the entire array in memory when you could instead store just the address of the first value?**
+Technically, the first line is just making the call `malloc(20)` since the size of an int is 4 bytes (32 bit), but this is bad practice because it is less readable and more difficult to understand if there's a bug. 
 
-The final important thing to learn about memory allocation is memory deallocation. Java has a garbage collector, so when a dynamically allocated segment is not of use anymore, e.g. if a pointer is popped off the stack, the garbage collector will automatically open up the segment of memory on the heap that was previously being used. In C, we don't have the luxury of a garbage collector, so the programmer has to manually free up the memory. We can do this with the library call `free()` which takes a pointer and deallocates the memory that it points to. 
+Opposed to Java, which uses bracket notation for arrays (int []), you'll oftentimes see `malloc()` being used to create an array in C. This seems confusing at first, but in reality Java is also doing something similar...it's just choosing to abstract those details away from the user.
+
+### Free
+The final important thing to learn about memory allocation is **memory deallocation**. Java has a garbage collector, so when a dynamically allocated segment is not of use anymore, e.g. a function containing initialization of an ArrayList is exited, the garbage collector will automatically free up the segment of memory on the heap that was previously being used. 
+
+In C, we don't have the luxury of a garbage collector, so the programmer has to manually free up the memory. We can do this with the library call `free()` which takes a pointer and deallocates the memory that it points to. 
 
 ```
 struct Point {
@@ -212,10 +233,10 @@ int main() {
   return 0;
 }
 ```
-For this class, it won't make any practical difference whether you free up memory. The programs were dealing with are often short lived and don't consume massive amounts of memory. However, it is best practice to use `free()`. If you don't, a **memory leak** can occur. This is when previously allocated memory isn't deallocated, therefore _heap spaced is wasted until there is no heap space left_, and the program crashes. In a professional setting, it could be fatal to the application if you didn't free up memory.
+For this class, it won't make any practical difference whether you free up memory. The programs were dealing with are often short lived and don't consume massive amounts of memory. However, it is best practice to use `free()`. If you don't, a **memory leak** can occur. This occurs when previously allocated memory isn't deallocated, therefore _heap spaced is wasted until there is no heap space left_, and the program crashes. In a professional setting, it could be fatal to the application if you didn't free up memory.
 
 ## Practice <a name = "practice"></a>
-+ Using malloc, create two arrays: one `int` array and one `char` array. Size and initialize the arrays so that the former contains digits 0-9 and the latter contains the lowercase alphabet a-z, both in order. Print the associated number-letter pairs to the console while using all the letters, i.e. once the end of the digits array reaches the end, loop back to the beginning.
++ Using malloc, create two arrays: one `int` array and one `char` array. Size and initialize the arrays so that the former contains digits 0-9 and the latter contains the lowercase alphabet a-z, both in order. Print the associated number-letter pairs to the console while using all the letters, i.e. once the digits array reaches the end, loop back to the beginning.
 
 `a0 b1 c2 ... j9 k0 ... z5` 
 
