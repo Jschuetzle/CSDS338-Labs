@@ -148,3 +148,5 @@ Notice the extra file `a.out` that is created after compiling. This is an execut
 The level of experience that students have coming into this class can be vastly different. Some students already have a year or two of command-line experience and others have none (as was my case). The class will seem overwhelming at times and you may reach points where you have no idea what's going on, but I want to help you in those moments. 
 
 I'd appreciate if you could fill out this quick form that just gives some info on your background experience...that way I can change the level of difficulty in labs if need be. Thanks, and best of luck for the semester!
+
+![Form](https://forms.gle/WcGa63naLZcZhPEm6)
