@@ -9,7 +9,7 @@
 Last week we reviewed a lot of material. We went over 
 
 + a process's memory layout, specifically the stack
-+ why the stack didn't occupy the highest possible memory addresses (kernel space)
++ kernel space and special permissions associated with kernel mode
 + how applications make requests for certain system calls
 
 In that last bullet the word *requests* is really important. System calls are *special instructions* only executable while in kernel mode (bit mode 0), so user applications aren't allowed to execute these instructions, rather they have to *request* that the instruction be executed. I want to stress, **in your C programs, you can utilize system calls in your code**, however, they will be executed in kernel space, not user space.
@@ -20,12 +20,11 @@ In one of the examples, we saw how information such as a syscall ID number can b
 
 The list contains hundreds of system calls that are available for the operating system to use, and will even be relied upon in order to get back to user space to continue execution. 
 
- + **How do we figure out which system calls are being made?**
 
  ## Examining the `ls` Command <a name = "ls"></a>
-In order to better answer this question, we're going to do a deep dive into how the `ls` command executes. Now, we don't have the source code of the `ls` command, nor does it seem evident where we'd find it. Some extremely helpful diagnostic tools can give us more information though! The commands `ltrace` and `strace` will intercept any library calls and system calls, respectively, during the execution of the `ls` command. We already have talked about what system calls are, but what are library calls? 
+In order to better understand system calls, we're going to do a deep dive into how the `ls` command executes. Now, we don't have the source code of the `ls` command, nor does it seem evident where we'd find it. Some extremely helpful diagnostic tools can give us more information though! The commands `ltrace` and `strace` will intercept any library calls and system calls, respectively, during the execution of the `ls` command. We already have talked about what system calls are, but what are library calls? 
 
-**Library calls** are just calls to any functions that reside in shared libraries (.so file extension) that reside in the `/lib` directory on the system. Think of this as using functions that are imported from some package in Java, e.g. the creation of an ArrayList would require a library call. Functions like `printf`, `malloc`, and `sleep` are examples of libcalls, and their stack frames can reside in user space.
+**Library calls** are just calls to any functions that reside in shared libraries (.so file extension) in the `/lib` directory on the system. Think of this as using functions that are imported from some package in Java, e.g. the creation of an ArrayList would require a library call. Functions like `printf`, `malloc`, and `sleep` are all examples of libcalls, and their stack frames can reside in user space.
 
 We use `ltrace` and `strace` in the following ways...
 
@@ -36,7 +35,9 @@ ltrace ls
 ```
 strace ls
 ```
-If the operating system doesn't recognize those commands, you can install them with the package manager of whatever system you're using (for me, it's `apt install strace`). These commands won't necessarily output the source code, but they will output all the dynamic library calls and system calls that occur during execution, and this will inform us on the execution behavior of `ls`. I'm going to dive deeper into the output in class as opposed to here, but I will list some sequences of instructions that I think are important here.
+If the operating system doesn't recognize those commands, you can install them with the package manager of whatever system you're using (for me, it's `apt install strace`). 
+
+These commands won't necessarily output the source code, but they will output all the dynamic library calls and system calls that occur during execution, and this will inform us on the execution behavior of `ls`. I'm going to dive deeper into the output in class as opposed to here, but I will list some sequences of instructions that I think are important here.
 
 ### strace Output
 The very first line of our `strace` output tells us a lot about the nature of the `ls` command. 
@@ -81,10 +82,6 @@ I think the `ltrace` is less insightful than the `strace` output, and I won't sp
 |:--:| 
 | Subdirectory names getting written into stack buffer |
 
-| ![Contents of the stack buffer getting written to terminal](/images/ltrace-stack-writes.png) | 
-|:--:| 
-| Contents of the stack buffer getting written to terminal |
-
 
 ## Investigating the 'Calling' Process <a name = "bash"></a>
 Remember from the strace, that the `exec()` call simply overwrites the memory of the current process with that of a new program--the new program being `/bin/ls`. But what exactly is the *current process* in this situation?
@@ -112,7 +109,7 @@ We can abuse this by typing in `ls` and running it, which leads to the following
 ![ls command getting read](/images/stracebash-ls.png)
 
 ### Forking
-Ok! So Bash must be the calling process...not so fast. Remember that `exec()` we talked about? If you scroll through the output of this strace, you'll see that there are *no invocations* of `exec()`. So we went through all this trouble and we still don't know who the calling process is. But the following syscall reveals what's really going on here...
+Ok! So Bash must be the calling process? Not yet... Remember that `exec()` we talked about? If you scroll through the output of this strace, you'll see that there are *no invocations* of `exec()`. So we went through all this trouble and we still don't know who the calling process is. But the following syscall reveals what's really going on here...
 
 ![strace bash output clone call](/images/stracebash-clone.png)
 
@@ -122,7 +119,7 @@ What's important here is that the next line of output **prints the contents of t
 
 ![strace bash output clone call](/images/stracebash-wait.png)
 
-From the screenshot, we see that the PID is `16745`, and just a few syscalls after the `clone()`, there are two calls to `wait()`. If you read the documentation for this command (`man wait`), you'll read that it's job is to wait for the state of the child to change (probably from running to sleeping or running to terminated). If it successfully does this, the return value is the PID of the child process...**which on our output is the same PID as the return value from `clone()`**.
+From the screenshot, we see that the PID is `16745`, and just a few syscalls after the `clone()`, there are two calls to `wait()`. If you read the documentation for this command (`man wait`), you'll read that it's job is to wait for the state of the child to change (probably from running to sleeping or running to terminated). If it successfully does this, the return value is the PID of the child process...**which is the same PID as the return value from `clone()`**.
 
 From all of this, we can determine the sequence of events to be
 + Bash interprets the text in the terminal (standard input)
@@ -138,15 +135,8 @@ While I was messing around with the strace outputs, I noticed that they weren't 
 
 ![Directory contents printed out later, during wait() syscall](/images/strace-parentfirst.png)
 
-**This has to do with execution order**, specifically the execution order after a `fork()`. We know after a fork, a duplicate process is made that has an entirely new PID. This means the scheduler has to choose between either (1) the parent, (2) the child, or (3) some other runnable process, i.e. the scheduler treats the parent and child as different entities. In our previous example, directly after the call to `clone()`, the contents of the directory had been written to the terminal. Therefore, in that specific example, it was the child who ran first. However in this example, the `bash` process seems to keep running directly after the `clone()` call. It's not until `bash` **waits** that the directory contents are printed. Therefore, in this new example, it was the parent who ran first. 
+**This has to do with execution order**, specifically the execution order after a `fork()`. We know after a fork, a duplicate process is made that has an entirely new PID. This means the scheduler has to choose between either (1) the parent, (2) the child, or (3) some other runnable process, i.e. the scheduler treats the parent and child as different entities. 
+
+In our previous example, directly after the call to `clone()`, the contents of the directory had been written to the terminal. Therefore, in that specific example, it was the child who ran first. However in this example, the `bash` process seems to keep running directly after the `clone()` call. It's not until `bash` **waits** that the directory contents are printed. Therefore, in this new example, it was the parent who ran first. 
 
 This is a great example of how the order of execution between the parent and child processes is **indeterminant**. If you really want to ensure yourself of the order, instead of running `ls`, you can run `strace ls` in order to also see the system calls of the child process. 
-
-
-
-
-
-
-
-
-
