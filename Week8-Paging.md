@@ -1,6 +1,7 @@
 # What we're doing today
 + [Virtual Memory](#vmem)
 + [Paging](#paging)
++ [Page Tables](#table)
 
 
 ## Virtual Memory <a name = "vmem"></a>
@@ -13,16 +14,16 @@ Yet again, we've ran into another OS abstraction that can intuitively be confusi
 We refer to these 4kB spaces as **pages** when they are in the VAS and **frames** when they are in the PAS. Ultimately, each page address gets **translated** into a physical memory address, that way the contents of virtual addresses exist in some shape or form on RAM. 
 
 The size of the virtual address space is dependent on the system you're working on. You've probably heard the term **32-bit** or **64-bit** before, and this describes the size of the virtual address space, i.e.
-- 2^{32} = 4,294,967,296 addresses = **4GB**
-- 2^{64} = 18,446,744,073,709,552,000 addresses = **16 Exibytes**
+- 2<sup>32</sup> = 4,294,967,296 addresses = **4GB**
+- 2<sup>64</sup> = 18,446,744,073,709,552,000 addresses = **16 Exibytes**
 
-64-bit machines really only use about 48 bits for each virtual address, which really equates to 256 TB of virtual space. The general trend is that modern virtual address spaces tend to be much much larger than the size of physical RAM that accompanies them (~16GB). As a result, **not all the virtual addresses will get mapped to physical ones**. 
+Note: 64-bit machines really only use about 48 bits for each virtual address, which really equates to 256 TB of virtual space. The general trend is that modern virtual address spaces tend to be much much larger than the size of physical RAM that accompanies them (~16GB). As a result, **not all the virtual addresses will get mapped to physical ones**. 
 
 
 ## Why Vmem?
 Virtual addresses themselves aren't super confusing, but they seem unneeded at first...so what's the whole point of having this huge address space that doesn't actually exist? It all really boils down to **memory protection**.
 
-The virtual address space makes it seem to each process that it is the only entity on the system. This gives processes the illusion that it has access to more memory than the real amount the system contains, which is great for multiprocessing and virtual machines.
+Virtual memory lures each process into thinking that it is the only entity using memory on the system. This gives processes the illusion that it has access to more memory than the real amount the system contains, which is great for multiprocessing and virtual machines.
 
 In the end, we don't want processes to be able to access each other's memory, or else applications might cause each other to crash, fault, etc. So even though two processes may contain information at the same virtual address, in reality those identical virtual addresses will be mapped to completely different parts of RAM, that way the processes don't interfere with each other.
 
@@ -32,11 +33,11 @@ In the end, we don't want processes to be able to access each other's memory, or
 A process can access all of its virtual addresses, AND ONLY A SUBSET OF THE VIRTUAL ADDRESS ARE ACTUALLY MAPPED TO PHYSICAL MEMORY. The operating system has the final say in what regions of physical memory a process can access. Hopefully, the regions of physical memory that processes map into are disjoint, that way they are isolated from each other.
 
 ## Paging
-So we know the layout of both virtual and physical memory at this point. But wow do we actually translate/map virtual addresses to physical address? The process of doing so is called **paging** and it boils down to a mix of hardware and software. To start, we're going to look at paging from a simple view, i.e. how we would map a process's memory into **contiguous chunks on RAM**.
+So we know the layout of both virtual and physical memory at this point. But how do we actually translate/map virtual addresses to physical address? The process of doing so is called **paging** and it boils down to a mix of hardware and software. To start, we're going to look at paging from a simple view, i.e. how we would map a process's memory into **contiguous chunks on RAM**.
 
 ![contiguous allocations on physical memory for each process](/images/contiguous-ram.png)
 
-One of the hardware components involed in paging is the **Memory Management Unit (MMU)**. It takes **virtual address and process id** as input and outputs a physical address. Think about why it takes PID in as an argument..
+One of the hardware components involed in paging is the **Memory Management Unit (MMU)**. It takes **virtual address and PID** as input and outputs a physical address. Think about why it takes PID in as an argument..
 
 The whole point of the MMU is to do 2 jobs...
 
@@ -50,12 +51,12 @@ Bounds checking is a large part of memory protection. Essentially, it checks whe
 
 ![compiler with and without bounds checks](/images/bounds-checking.png)
 
-The bottom left would unprotected code, whereas the code on the right performs a bounds check. This provides good memory protection, but the overhead of doing so IS INSANE. Think about all the extra instructions that are required for every load/store instruction! We don't want this! That's why the hardware of the MMU deals with this instead of the compiler...
+The bottom left is unprotected code, whereas the code on the right performs a bounds check. This provides good memory protection, but the overhead of doing so IS INSANE. Think about all the extra instructions that are required for every load/store instruction! We don't want this! That's why the hardware of the MMU deals with this instead of the compiler...
 
 #### Physical Offset
 This is only relevant for when we are mapping entire processes contiguously into physical memory. I like to think about it in the following way...
 
-Let's say we want to map virtual address 0x0. In order to access that in physical memory, assuming the bounds have allowed us, all we have to do is add some offset to the virtual address; the offset being the start of the contiguous chunk in physical memory. For other virtual addresses, you will keep translateing and adding the offset. That's exactly what the **relocation register** does in this diagram...it's a register because the offset will be different for different processes, so this register can be loaded with some different offset in that case. 
+Let's say we want to map the first virtual address. In order to access that in physical memory, assuming the bounds have allowed us, all we have to do is add some offset to the virtual address; the offset being the start of the contiguous chunk in physical memory. For other virtual addresses, you will keep translating and adding the offset. That's exactly what the **relocation register** does in this diagram...it's a register because the offset will be different for different processes, so this register can be loaded with some different offset in that case. 
 
 ![offset for contiguous physical allocations](/images/mmu-offset.png)
 
@@ -63,17 +64,26 @@ Mapping entire process's into contiguous physical chunks is somewhat simple for 
 
 This motivates a system that maps virtual addresses into **non-contiguous chunks**.
 
-
-## Non Contiguous Physical Allocations (coming from contiguous virtual allocations)
-This is more complicated. But, the whole motivation for doing this is because fragmentation is a pain in the ass for contiguous physical allocations. The aim is
+### Non Contiguous Physical Allocations
+This is more complicated. But, the whole motivation for doing this is because fragmentation is a pain for contiguous physical allocations. Here is a diagram showing what the situation looks like...
 
 ![diagram of the noncontiguous mappings were aiming for](/images/noncontiguous-physical.png)
 
+A really simple implementation of this is to break each process's VAS into segments, e.g. the binary, the code, the heap, the stack. In order for the MMU to map these segments without overlap, we can assign each of the segments some ID. If we do this, all the bits in the virtual address will be composed of 1) the segment ID and 2) the offset of how far into the segment a certain address is. 
 
-He brought up calling the buddy allocator for multiple rounds...let's say you're trying to allocate some size that ISN"T A POWER OF 2, you would allocate as large a power of two chunk as possible, and then call buddy again on the remainder. In doing this, you would probably get non-contiguous physical allocations.
+![segments of vmem getting mapped](/images/noncontiguous-segments.png)
+
+This isn't truly how the segments are split up though, but I think it provides as a great stepping stone. In reality, the segments in the OS are all the **pages**, each sized at 4096 bytes. So the 12 least significant bits (2<sup>12</sup> = 4096) will be devoted to the offset into each page, and the rest of the bits will act as a "segment ID" or "page number". 
 
 ![virtual address components for paging](/images/addressing-scheme.png)
 
-I'm really confused at what the **page number** and **page offset** represent intuitively. But, I understand the breakdown at the bottom. The entire address contains either 32 or 64 bits. The LSB represent the page offset, and the number of bits used is depedent on the page size of the system (4kB pages means 12 bits will be used). The rest of the MSB will be dedicated the page frame number. The physical address that is mapped is just the output of the MMU function plus the offset (again, pid is accounted as an input as well).
+So now we've invented this system that allows for non-contiguous physical memory allocations, and fragmentation won't be a worry as it was before. In addition, memory protection/isolation is provided to each of the virtual pages, as the MMU makes sure they can't overlap. However, **have we provided memory protection for allocations of size less than 4096?**
+
+## Page Tables <a name = "table"></a>
+One of the diagrams above display how a **bounds register** and **relocation register** work with contiguous chunks. This worked well because each process's VAS was treated entirely as a segment, therefore each process only needed a single bounds register and relocation register. However, when we start to segment the VAS, we would need a bounds register and relocation register **for each page**. Based on the amount of pages that exist in a VAS, THIS IS BASICALLY IMPOSSIBLE to implement in hardware. Registers are extremely fast, but the tradeoff is that they are extremely complicated, which is the reason why there are only about 20-40 registers per modern CPU.
+
+We need another solution. That solution is **page tables**.
+
+![basic diagram of page tables](/images/page-tables.png)
 
 
