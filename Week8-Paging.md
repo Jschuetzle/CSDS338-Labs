@@ -73,6 +73,7 @@ This is more complicated. But, the whole motivation for doing this is because fr
 
 A really simple implementation of this is to break each process's VAS into segments, e.g. the binary, the code, the heap, the stack. In order for the MMU to map these segments without overlap, we can assign each of the segments some ID. If we do this, all the bits in the virtual address will be composed of 1) the segment ID and 2) the offset of how far into the segment a certain address is. 
 
+(#segment-id)
 ![segments of vmem getting mapped](/images/noncontiguous-segments.png)
 
 This isn't truly how the segments are split up though, but I think it provides as a great stepping stone. In reality, the segments in the OS are all the **pages**, each sized at 4096 bytes. So the 12 least significant bits (2<sup>12</sup> = 4096) will be devoted to the offset into each page, and the rest of the bits will act as a "segment ID" or "page number". 
@@ -98,6 +99,36 @@ We're going to discuss the cons of page tables in terms of _latency_ and _storag
 #### Latency
 If we look back at how the [compiler dealt with keeping loads/stores protected](#compiler-bounds), the number of instructions increases about 5x. When we doing loading/storing with page tables, the number of instructions will **at least double**. The first instruction will access the page table in order to get the physical frame, and the second instruction will complete the load/store. As you'll see with the more modern page table designs that we'll talk about shortly, the number of instructions may be 2-4x greater in some situations.
 
-Is there any way to reduce this latency? The solution to that is the **translation lookaside buffer**. The TLB is _a cache for page translations_, similar to the caches the CPU uses. But how does using a cache in this situation speed things up? Wouldn't you still have to spend an instruction accessing an element in the cache?
+Is there any way to reduce this latency? The solution is the **translation lookaside buffer**. The TLB is _a cache for page translations_ and is contained inside the MMU. But how does using a cache in this situation speed things up? Wouldn't you still have to spend an instruction accessing an element in the cache?
 
-The trick is that the TLB is a **hardware cache**. It can 
+![diagram of TLB](/images/tlb.png)
+
+The trick is that the TLB is a **hardware cache**. It is solely implemented by circuits, which allows for parallelization, i.e. all of the entries in TLB are examined simultaneously. The TLB a really complicated piece of hardware, and as a result the number of entries in the cache is extremely small (something like 64 entries). 
+
+Since the TLB is hardware, it can operate extremely fast, and therefore we can include that functionality with _any call_ to a load/store. As a result, if a TLB hit occurs, then it will only cost us _1 instruction_.
+
+
+#### Storage Size
+A naive approach to page tables is thinking about them as an _array of mappings_. If this was true, then we can calculate it's predicted size...
+
+Since each virtual page should technically have an entry in the page table, we can **divide the entire virtual space by 4kB, and then multiply by how many bytes each address has**. On a 32-bit system,
+
++ 2<sup>32</sup> / 2<sup>12</sup> = 2<sup>20</sup> pages
++ 2<sup>20</sup> * 4 bytes = 4MB
+
+So each page table would contain nearly 4 MEGABYTES worth of CONTIGUOUS SPACE...this is terrible! And that's just for one process! If we multiple this number by the number of processes on the system, then nearly 1/3 of the entire RAM will just contain page tables...
+
+The solution is **hierarchical page tables**.
+
+![diagram of hpt](/images/hpt.png)
+
+Hierarchical page tables are structured like a tree. The root of the tree will contain entries the point to _inner page tables_. There could be two or three levels of indirection, but eventually the _leaf nodes will act as normal page tables_...containing actually mappings. 
+
+If you do the calculations, we actually aren't decreasing space...storage size is really increasing! So how is this design better? HPT's take advantage of the fact that a large number of virtual addresses are invalid, i.e. they are apart of the large holes in the VAS. Therefore, we can nullify entries in the root page table, which then destory the inner page tables that are pointed to. This saves us a lot of space! Here's a great [2 min video](https://www.youtube.com/watch?v=8kBPRrHOTwg) that explains it about as simply as possible.
+
+## Advice
+I think this is probably one of the most confusing topics in OS, and this lesson certainly took me a long time to write this lesson (as I wasn't super knowledgeable about Vmem). Even though it's confusing, I think it's worth spending the time to study this lesson until you feel like you have a decent grasp on virtual memory and paging. 
+
+From here on out, Loui's lessons will be quite dependent on an understanding of these topics, and there's less probability you will get confused in lecture if you know what's going on in this lesson. Again, just my advice... :)
+
+
