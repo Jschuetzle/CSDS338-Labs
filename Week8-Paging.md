@@ -2,6 +2,7 @@
 + [Virtual Memory](#vmem)
 + [Paging](#paging)
 + [Page Tables](#table)
++ [Improving Page Tables](#tlb-and-hpts)
 
 
 ## Virtual Memory <a name = "vmem"></a>
@@ -49,6 +50,7 @@ The whole point of the MMU is to do 2 jobs...
 #### Bounds Checking
 Bounds checking is a large part of memory protection. Essentially, it checks whether the virtual address being used in a load/store instruction (dereference) is in between a valid bound, otherwise the system will produce a segmentation fault. This could be easily done by the compiler, e.g. if we try to assign `int y` by dereferencing some int pointer `x`, the compiler could produce two sets of instructions...
 
+(#compiler-bounds)
 ![compiler with and without bounds checks](/images/bounds-checking.png)
 
 The bottom left is unprotected code, whereas the code on the right performs a bounds check. This provides good memory protection, but the overhead of doing so IS INSANE. Think about all the extra instructions that are required for every load/store instruction! We don't want this! That's why the hardware of the MMU deals with this instead of the compiler...
@@ -80,10 +82,22 @@ This isn't truly how the segments are split up though, but I think it provides a
 So now we've invented this system that allows for non-contiguous physical memory allocations, and fragmentation won't be a worry as it was before. In addition, memory protection/isolation is provided to each of the virtual pages, as the MMU makes sure they can't overlap. However, **have we provided memory protection for allocations of size less than 4096?**
 
 ## Page Tables <a name = "table"></a>
-One of the diagrams above display how a **bounds register** and **relocation register** work with contiguous chunks. This worked well because each process's VAS was treated entirely as a segment, therefore each process only needed a single bounds register and relocation register. However, when we start to segment the VAS, we would need a bounds register and relocation register **for each page**. Based on the amount of pages that exist in a VAS, THIS IS BASICALLY IMPOSSIBLE to implement in hardware. Registers are extremely fast, but the tradeoff is that they are extremely complicated, which is the reason why there are only about 20-40 registers per modern CPU.
+One of the diagrams above display how a **bounds register** and **relocation register** work with contiguous chunks. This worked well because each process's VAS was treated entirely as a segment, therefore each process only needed a single bounds register and a single relocation register. However, when we start to segment the VAS, we would need a bounds register and relocation register **for each page**. Based on the amount of pages that exist in a VAS, THIS IS BASICALLY IMPOSSIBLE to implement in hardware. Registers are extremely fast, but the tradeoff is that they are extremely complicated, which is the reason why there are only about 20-40 registers per modern CPU.
 
 We need another solution. That solution is **page tables**.
 
 ![basic diagram of page tables](/images/page-tables.png)
 
+Each segment of the VAS (each page) will get it's own entry in the page table, and each entry will store the physical address that is being mapped to. Try not to confuse the MMU and the page table...the MMU is hardware that simply does a conversion from virtual to physical. On the other hand, page tables are simply an array that stores all the mappings for each page with some additional information (such as whether the page is valid and its permissions). Page tables are managed by the kernel and can be expanded accordingly if more virtual addresses are created. In order to isolate virtual pages of differing processes from each other, **each process has its own page table**. 
 
+But, regular page tables have huge downsides that we'll spend the rest of lab talking about...
+
+## Improving Page Tables <a name = "tlb-and-hpts"></a>
+We're going to discuss the cons of page tables in terms of _latency_ and _storage size_.
+
+#### Latency
+If we look back at how the [compiler dealt with keeping loads/stores protected](#compiler-bounds), the number of instructions increases about 5x. When we doing loading/storing with page tables, the number of instructions will **at least double**. The first instruction will access the page table in order to get the physical frame, and the second instruction will complete the load/store. As you'll see with the more modern page table designs that we'll talk about shortly, the number of instructions may be 2-4x greater in some situations.
+
+Is there any way to reduce this latency? The solution to that is the **translation lookaside buffer**. The TLB is _a cache for page translations_, similar to the caches the CPU uses. But how does using a cache in this situation speed things up? Wouldn't you still have to spend an instruction accessing an element in the cache?
+
+The trick is that the TLB is a **hardware cache**. It can 
