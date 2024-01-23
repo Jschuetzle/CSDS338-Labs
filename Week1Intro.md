@@ -2,7 +2,7 @@
 
 ## What we're doing today
 + [Connecting to EECSlab](#server-connect)
-+ [Navigatng the terminal](#terminal)
++ [Navigating the terminal](#terminal)
 + [Creating C programs](#text-editing)
 + [Compiling and Running Code](#compile-run)
 + [Student Questionnaire](#q)
