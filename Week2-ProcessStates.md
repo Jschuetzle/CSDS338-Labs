@@ -1,7 +1,7 @@
 # What we're doing today
 + [Processes](#process)
-+ [Observing Processes](#top)
 + [Process States](#process-states)
++ [Waiting Processes](#waiting)
 + [Background vs. Foreground](#bgfg)
 + [Useful Options and Commands](#options)
 
@@ -14,7 +14,7 @@ a processes can be composed of multiple threads, which very often is the case. T
 
 ![threads in a process block](/images/threads_in_process.png)
 
-## Observing Processes <a name = "top"></a>
+### Observing Processes
 One of the most frequent tasks that are asked of you on homeworks is to use the command `top`. Running this command will output a table with information about all the current processes that exist on the system currently. Here's what that looks like on my chromebook which runs Debian Linux.
 
 ![top output](/images/top.png)
@@ -60,6 +60,27 @@ The states **ready** and **waiting** might seem slightly similar. If something i
 **When a process is waiting** (sleeping), **the resources the process needs are not available**. Regardless of whether the CPU is open or not, a sleeping process relinquishes any possiblility of running on the CPU while it stays sleeping. When the resources become available again, a signal will be sent to the CPU, and that previously sleeping process will now become ready or will run. An example of a process that sleeps a lot is a process that reads input from the keyboard.
 
 There are different types of sleeping states, but I won't talk about that now. [Here's a link](https://access.redhat.com/sites/default/files/attachments/processstates_20120831.pdf) if you'd like to read more about it.
+
+## Waiting Processes <a name = "waiting"></a>
+Waiting processes may seem slightly unimportant at first, but they actually save the processor a lot of time. A common example of processes having to wait is related to device controllers.
+
+![diagram of CPU communication lines with devices](/images/device-controllers.png)
+
+Each of these device controllers has its own registers and buffers, similar to the ones that are used on a CPU, but only for use within those device controllers. Instructions on the CPU don't perform behaviors/actions that happen on these device controllers, rather the CPU instructions tell the device controllers to get something done. We'll dive more into device speeds during the memory units, but device drivers are comparatively much much slower than the speed at which the CPU operates (except for caches, everything on the OS is comparatively slow).
+
+![table of speeds for CPU and other parts of OS](/images/controller-speed.png)
+
+If we were to accept these speeds, then here's what the execution flow might look like...
+
+![cpu and controller activity diagram](/images/cpu-complete-wait.png)
+
+I'll talk about this diagram in class, but essentially we are wasting what seems to be infinite time. In order for the operating system to be efficient, we essentially want to be operating at CPU speed (nanosecond scale) as much as possible. So how do we maneuver the issue of device controller speeds? This is done by **context-switching** and **interrupts**.
+
+If a process requests for resources, it usually won't be able to continue it's execution until it receives the resources. In this situation, we can take the process off the CPU, i.e. **changing it's state from running to waiting**. This is an example of a context switch, when one process gets moved off the CPU, presumably for another process to run. Once the device controller obtains the resources, it will send an interrupt to the CPU, basically like a text message you get in the middle of class. 
+
+![](/images/interrupt-diagram.png)
+
+Once that interrupt is processed, we can put the previously waiting process into a ready state in order to execute once again on the CPU. You can see from the above diagram that we're saving a lot of CPU cycles with this new method of execution.
 
 ## Background vs. Foreground <a name = "bgfg"></a>
 Let's take our Hello World program and put it into a sleep state. We can do that explicitly by calling `sleep(100)` in our program after we print to the console. Note that we need to include a new header file
