@@ -26,6 +26,12 @@ In order to better understand system calls, we're going to do a deep dive into h
 
 **Library calls** are just calls to any functions that reside in shared libraries (.so file extension) in the `/lib` directory on the system. Think of this as using functions that are imported from some package in Java, e.g. the creation of an ArrayList would require a library call. Functions like `printf`, `malloc`, and `sleep` are all examples of libcalls, and their stack frames can reside in user space.
 
+We can actually see these .so files in the memory map if we run any program from HW1! Here's what my memory map looked like after running a program that extends the stack through recursion and goes to sleep in the final function call...
+
+![memory map with shared object files from glibc](/images/shared-object-files.png)
+
+My program didn't make any references to `malloc` because I simply extended the stack through recursive calls, and I didn't use the `printf` function. The culprit here is my call to `sleep`. If you use the manual pages on terminal, i.e. `man sleep`, you'll see the name of the command and a number in parentheses right next to it. That number can tell us whether the function is a system call (2) or a library call (3). In the case of `sleep` there's a one, which is confusing, but if you look a couple lines down you'll see that it refers to `sleep(3)`, meaning that `sleep` is a library call.
+
 We use `ltrace` and `strace` in the following ways...
 
 ```
@@ -38,6 +44,7 @@ strace ls
 If the operating system doesn't recognize those commands, you can install them with the package manager of whatever system you're using (for me, it's `apt install strace`). 
 
 These commands won't necessarily output the source code, but they will output all the dynamic library calls and system calls that occur during execution, and this will inform us on the execution behavior of `ls`. I'm going to dive deeper into the output in class as opposed to here, but I will list some sequences of instructions that I think are important here.
+
 
 ### strace Output
 The very first line of our `strace` output tells us a lot about the nature of the `ls` command. 
