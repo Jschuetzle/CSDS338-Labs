@@ -96,7 +96,7 @@ Remember from the strace, that the `exec()` call simply overwrites the memory of
 + **Who is running before `/bin/ls` is loaded into memory?**
 
 We can't simply get this information from `strace ls`, because `strace` will only tell us which syscalls are made _after_ `ls` process begins executing, instead of _before_. That's where `bash` comes into play. 
-
+<!--
 During the first week, I talked briefly about [Bash](Week1Intro.md#terminal) as an interpreter for the commands you type in the terminal. It's job is to read the command you typed and perform specific actions in order for the program to run successfully. After that is done, it must listen and wait for any future commands. This is great, **but how do you prove that Bash is calling `ls`?**.
 
 We can do this by **using strace on bash!** After running this command
@@ -114,7 +114,7 @@ This is odd. If you look at the documentation (`man read`), you'll see that the 
 We can abuse this by typing in `ls` and running it, which leads to the following output...
 
 ![ls command getting read](/images/stracebash-ls.png)
-
+-->
 ### Forking
 Ok! So Bash must be the calling process? Not yet... Remember that `exec()` we talked about? If you scroll through the output of this strace, you'll see that there are *no invocations* of `exec()`. So we went through all this trouble and we still don't know who the calling process is. But the following syscall reveals what's really going on here...
 
