@@ -83,7 +83,7 @@ So now, when we call `free(void* ptr)` on an address, all that needs to be done 
 
 **How do we actually free the memory though?**
 
-## Free List <a name = "freelist></a>
+## Free List <a name = "freelist"></a>
 We theoretically could just pass in a negative value to `sbrk()` in order to free up memory. However, this would only make sense if the chunk of memory being freed is currently at the end of the heap. If the chunk was in between two other allocations, that would cut off any further chunks and render them useless because they would be past the program break. This is super problematic.
 
 ![chunk of memory becoming useless after a naive free()](/images/naive-free.png)
