@@ -87,7 +87,7 @@ One of the diagrams above display how a **bounds register** and **relocation reg
 
 We need another solution. That solution is **page tables**.
 
-![basic diagram of page tables](/images/page-tables.png)
+![basic diagram of page tables](/images/page-table.png)
 
 Each segment of the VAS (each page) will get it's own entry in the page table, and each entry will store the physical address that is being mapped to. Try not to confuse the MMU and the page table...the MMU is hardware that simply does a conversion from virtual to physical. On the other hand, page tables are simply an array that stores all the mappings for each page with some additional information (such as whether the page is valid and its permissions). Page tables are managed by the kernel and can be expanded accordingly if more virtual addresses are created. In order to isolate virtual pages of differing processes from each other, **each process has its own page table**. 
 
